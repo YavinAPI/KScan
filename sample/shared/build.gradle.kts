@@ -32,7 +32,7 @@ kotlin {
             api(libs.androidx.core.ktx)
             api(libs.moko.permissions)
             api(libs.moko.permissions.compose)
-            api(compose.preview)
+            api(libs.ui.tooling.preview)
         }
         iosMain.dependencies {
             api(libs.moko.permissions)
