@@ -23,7 +23,7 @@ kotlin {
                 implementation(libs.androidx.lifecycle.runtime.compose)
 
                 implementation(compose.desktop.currentOs)
-                //implementation(libs.kotlinx.coroutines.swing)
+                implementation(libs.kotlinx.coroutines.swing)
 
                 implementation(project(":sample:shared"))
             }
@@ -40,6 +40,15 @@ compose.desktop {
 
             packageName = "org.ncgroup.kscan"
             packageVersion = "1.0.0"
+
+            macOS {
+                infoPlist {
+                    extraKeysRawXml = """
+                        <key>NSCameraUsageDescription</key>
+                        <string>Camera access is required for barcode scanning</string>
+                    """
+                }
+            }
         }
     }
 }

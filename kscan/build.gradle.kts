@@ -30,7 +30,8 @@ kotlin {
         }
         jvmMain.dependencies {
             implementation(libs.compose.desktop)
-            implementation(libs.webcam.capture)
+            implementation(libs.javacv)
+            implementation(libs.opencv.platform)
             implementation(libs.zxing.core)
             implementation(libs.zxing.javase)
         }
