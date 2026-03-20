@@ -24,7 +24,7 @@ fun CustomUI(modifier: Modifier = Modifier) {
     var barcode by remember { mutableStateOf("") }
     var format by remember { mutableStateOf("") }
 
-    var scannerController = remember { ScannerController() }
+    val scannerController = remember { ScannerController() }
 
     Scaffold { padding ->
         Box(

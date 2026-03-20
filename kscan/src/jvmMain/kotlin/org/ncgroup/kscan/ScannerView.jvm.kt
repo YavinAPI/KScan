@@ -42,59 +42,108 @@ actual fun ScannerView(
 ) {
     val updatedResult by rememberUpdatedState(result)
     val coroutineScope = rememberCoroutineScope()
-    var grabber by remember { mutableStateOf<OpenCVFrameGrabber?>(null) }
     var cameraFrameBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var isScanning by remember { mutableStateOf(true) }
 
     DisposableEffect(Unit) {
-        coroutineScope.launch(Dispatchers.IO) {
-            try {
-                val defaultGrabber = OpenCVFrameGrabber(0)
+        val frameChannel = Channel<BufferedImage>(Channel.CONFLATED)
 
-                defaultGrabber.imageWidth = 1920
-                defaultGrabber.imageHeight = 1080
-                defaultGrabber.setVideoOption("focus_auto", "1")
+        val scannerJob = coroutineScope.launch(Dispatchers.Default) {
+            val reader = MultiFormatReader()
+            val hints: MutableMap<DecodeHintType, Any> = EnumMap(DecodeHintType::class.java)
 
-                defaultGrabber.start()
+            val formats = codeTypes.mapNotNull { it.toZxingFormat() }.ifEmpty {
+                listOf(com.google.zxing.BarcodeFormat.QR_CODE)
+            }
 
-                grabber = defaultGrabber
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
+            hints[DecodeHintType.POSSIBLE_FORMATS] = formats
+            hints[DecodeHintType.CHARACTER_SET] = "ISO-8859-1"
+            hints[DecodeHintType.TRY_HARDER] = true
+
+            reader.setHints(hints)
+
+            var rgbPixels: IntArray? = null
+            var fastSource: FastLuminanceSource? = null
+
+            for (image in frameChannel) {
+                if (!isActive || !isScanning) break
+
+                try {
+                    val width = image.width
+                    val height = image.height
+
+                    if (rgbPixels == null || rgbPixels.size != width * height) {
+                        rgbPixels = IntArray(width * height)
+                        fastSource = FastLuminanceSource(width, height)
+                    }
+
+                    image.getRGB(0, 0, width, height, rgbPixels, 0, width)
+
+                    val luminances = fastSource!!.luminances
+
+                    for (i in rgbPixels.indices) {
+                        val pixel = rgbPixels[i]
+                        val r = (pixel shr 16) and 0xff
+                        val g = (pixel shr 8) and 0xff
+                        val b = pixel and 0xff
+
+                        luminances[i] = ((r + (g shl 1) + b) shr 2).toByte()
+                    }
+
+                    val binaryBitmap = BinaryBitmap(HybridBinarizer(fastSource))
+                    val result = reader.decodeWithState(binaryBitmap)
+
+                    val bytes = if (result.resultMetadata.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
+                        val byteSegments = result.resultMetadata[ResultMetadataType.BYTE_SEGMENTS] as? MutableList<ByteArray?>
+
+                        byteSegments?.firstOrNull() ?: byteArrayOf()
+                    } else {
+                        null
+                    } ?: result.text.toByteArray(Charsets.ISO_8859_1)
+
+                    withContext(Dispatchers.Main) {
+                        val barcode = Barcode(
+                            data = result.text,
+                            format = result.barcodeFormat.toKScanFormat().toString(),
+                            rawBytes = bytes
+                        )
+
+                        if (filter(barcode)) {
+                            isScanning = false
+                            updatedResult(BarcodeResult.OnSuccess(barcode))
+                        }
+                    }
+                } catch (_: NotFoundException) {
+                    // no barcode found -> next image
+                } catch (e: Exception) {
                     updatedResult(BarcodeResult.OnFailed(e))
                 }
             }
         }
 
-        onDispose {
-            coroutineScope.launch(Dispatchers.IO) {
-                grabber?.stop()
-                grabber?.release()
-                grabber = null
-            }
-        }
-    }
+        val cameraJob = coroutineScope.launch(Dispatchers.IO) {
+            var localGrabber: OpenCVFrameGrabber? = null
 
-    if (grabber != null) {
-        DisposableEffect(Unit) {
-            val converter = Java2DFrameConverter()
-            val frameChannel = Channel<BufferedImage>(Channel.CONFLATED)
+            try {
+                localGrabber = OpenCVFrameGrabber(0).apply {
+                    imageWidth = 1920
+                    imageHeight = 1080
+                    setVideoOption("focus_auto", "1")
+                    start()
+                }
 
-            val poolSize = 5
-            val imagePool = Array<BufferedImage?>(poolSize) { null }
-            var poolIndex = 0
+                val converter = Java2DFrameConverter()
+                val poolSize = 5
+                val imagePool = Array<BufferedImage?>(poolSize) { null }
+                var poolIndex = 0
 
-            val cameraJob = coroutineScope.launch(Dispatchers.IO) {
                 while (isActive && isScanning) {
                     try {
-                        val frame = grabber?.grab() ?: continue
+                        val frame = localGrabber.grab() ?: continue
                         val image = converter.convert(frame)
 
                         if (imagePool[poolIndex] == null) {
-                            imagePool[poolIndex] = BufferedImage(
-                                image.width,
-                                image.height,
-                                image.type
-                            )
+                            imagePool[poolIndex] = BufferedImage(image.width, image.height, image.type)
                         }
 
                         val targetImage = imagePool[poolIndex]!!
@@ -103,7 +152,7 @@ actual fun ScannerView(
                         graphics.drawImage(image, 0, 0, null)
                         graphics.dispose()
 
-                        frameChannel.trySend(image)
+                        frameChannel.trySend(targetImage)
 
                         coroutineScope.launch(Dispatchers.Default) {
                             val composeBitmap = targetImage.toComposeImageBitmap()
@@ -116,84 +165,26 @@ actual fun ScannerView(
                         continue
                     }
                 }
-            }
-
-            val scannerJob = coroutineScope.launch(Dispatchers.Default) {
-                val reader = MultiFormatReader()
-
-                val hints: MutableMap<DecodeHintType, Any> = EnumMap(DecodeHintType::class.java)
-                val formats = codeTypes.mapNotNull { it.toZxingFormat() }.ifEmpty {
-                    listOf(com.google.zxing.BarcodeFormat.QR_CODE)
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    updatedResult(BarcodeResult.OnFailed(e))
                 }
-
-                hints[DecodeHintType.POSSIBLE_FORMATS] = formats
-                hints[DecodeHintType.CHARACTER_SET] = "ISO-8859-1"
-                hints[DecodeHintType.TRY_HARDER] = true
-
-                reader.setHints(hints)
-
-                var rgbPixels: IntArray? = null
-                var fastSource: FastLuminanceSource? = null
-
-                for (image in frameChannel) {
-                    if (!isActive || !isScanning) break
-
-                    try {
-                        val width = image.width
-                        val height = image.height
-
-                        if (rgbPixels == null || rgbPixels.size != width * height) {
-                            rgbPixels = IntArray(width * height)
-                            fastSource = FastLuminanceSource(width, height)
-                        }
-
-                        image.getRGB(0, 0, width, height, rgbPixels, 0, width)
-
-                        val luminances = fastSource!!.luminances
-
-                        for (i in rgbPixels.indices) {
-                            val pixel = rgbPixels[i]
-                            val r = (pixel shr 16) and 0xff
-                            val g = (pixel shr 8) and 0xff
-                            val b = pixel and 0xff
-
-                            luminances[i] = ((r + (g shl 1) + b) shr 2).toByte()
-                        }
-
-                        val binaryBitmap = BinaryBitmap(HybridBinarizer(fastSource))
-                        val result = reader.decodeWithState(binaryBitmap)
-
-                        val bytes = if (result.resultMetadata.containsKey(ResultMetadataType.BYTE_SEGMENTS)) {
-                            val byteSegments = result.resultMetadata[ResultMetadataType.BYTE_SEGMENTS] as? MutableList<ByteArray?>
-
-                            byteSegments?.firstOrNull() ?: byteArrayOf()
-                        } else { null } ?: result.text.toByteArray(Charsets.ISO_8859_1)
-
-                        withContext(Dispatchers.Main) {
-                            val barcode = Barcode(
-                                data = result.text,
-                                format = result.barcodeFormat.toKScanFormat().toString(),
-                                rawBytes = bytes
-                            )
-
-                            if (filter(barcode)) {
-                                isScanning = false
-                                updatedResult(BarcodeResult.OnSuccess(barcode))
-                            }
-                        }
-                    } catch (_: NotFoundException) {
-                        // no barcode found -> next image
-                    } catch (e: Exception) {
-                        updatedResult(BarcodeResult.OnFailed(e))
-                    }
+            } finally {
+                try {
+                    localGrabber?.stop()
+                    localGrabber?.release()
+                } catch (_: Exception) {
+                    // ignore exceptions on release
                 }
             }
+        }
 
-            onDispose {
-                cameraJob.cancel()
-                scannerJob.cancel()
-                frameChannel.close()
-            }
+        onDispose {
+            isScanning = false
+
+            cameraJob.cancel()
+            scannerJob.cancel()
+            frameChannel.close()
         }
     }
 
