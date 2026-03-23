@@ -132,7 +132,9 @@ actual fun ScannerView(
                 } catch (_: NotFoundException) {
                     // no barcode found -> next image
                 } catch (e: Exception) {
-                    updatedResult(BarcodeResult.OnFailed(e))
+                    withContext(Dispatchers.Main) {
+                        updatedResult(BarcodeResult.OnFailed(e))
+                    }
                 }
             }
         }
