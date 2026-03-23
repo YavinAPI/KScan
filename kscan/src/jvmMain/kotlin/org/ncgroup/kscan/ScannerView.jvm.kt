@@ -221,7 +221,7 @@ actual fun ScannerView(
     }
 }
 
-class FastLuminanceSource(
+private class FastLuminanceSource(
     width: Int,
     height: Int
 ) : com.google.zxing.LuminanceSource(width, height) {
