@@ -47,6 +47,17 @@ actual fun ScannerView(
     var cameraFrameBitmap by remember { mutableStateOf<ImageBitmap?>(null) }
     var isScanning by remember { mutableStateOf(true) }
 
+    val adjustedUiOptions = scannerUiOptions?.copy(
+        showTorch = false,
+        showZoom = false
+    )
+
+    scannerController?.apply {
+        maxZoomRatio = 1f
+        onTorchChange = {}
+        onZoomChange = {}
+    }
+
     DisposableEffect(Unit) {
         val frameChannel = Channel<BufferedImage>(Channel.CONFLATED)
 
@@ -183,7 +194,7 @@ actual fun ScannerView(
     ScannerViewContent(
         modifier = modifier,
         colors = colors,
-        scannerUiOptions = scannerUiOptions,
+        scannerUiOptions = adjustedUiOptions,
         torchEnabled = false,
         onTorchEnabled = {},
         zoomRatio = 1f,
