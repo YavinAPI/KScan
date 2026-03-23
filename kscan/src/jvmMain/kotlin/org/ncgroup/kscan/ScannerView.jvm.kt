@@ -65,11 +65,14 @@ actual fun ScannerView(
             val reader = MultiFormatReader()
             val hints: MutableMap<DecodeHintType, Any> = EnumMap(DecodeHintType::class.java)
 
-            val formats = codeTypes.mapNotNull { it.toZxingFormat() }.ifEmpty {
-                listOf(com.google.zxing.BarcodeFormat.QR_CODE)
-            }
+            val hasAllFormats = codeTypes.isEmpty() || codeTypes.contains(BarcodeFormat.FORMAT_ALL_FORMATS)
 
-            hints[DecodeHintType.POSSIBLE_FORMATS] = formats
+            if (!hasAllFormats) {
+                val formats = codeTypes.mapNotNull { it.toZxingFormat() }
+                if (formats.isNotEmpty()) {
+                    hints[DecodeHintType.POSSIBLE_FORMATS] = formats
+                }
+            }
             hints[DecodeHintType.CHARACTER_SET] = "ISO-8859-1"
             hints[DecodeHintType.TRY_HARDER] = true
 
