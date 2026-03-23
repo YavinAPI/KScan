@@ -133,34 +133,19 @@ actual fun ScannerView(
                 }
 
                 val converter = Java2DFrameConverter()
-                val poolSize = 5
-                val imagePool = Array<BufferedImage?>(poolSize) { null }
-                var poolIndex = 0
 
                 while (isActive && isScanning) {
                     try {
                         val frame = localGrabber.grab() ?: continue
                         val image = converter.convert(frame)
 
-                        if (imagePool[poolIndex] == null) {
-                            imagePool[poolIndex] = BufferedImage(image.width, image.height, image.type)
-                        }
-
-                        val targetImage = imagePool[poolIndex]!!
-
-                        val graphics = targetImage.graphics
-                        graphics.drawImage(image, 0, 0, null)
-                        graphics.dispose()
-
-                        frameChannel.trySend(targetImage)
+                        frameChannel.trySend(image)
 
                         coroutineScope.launch(Dispatchers.Default) {
-                            val composeBitmap = targetImage.toComposeImageBitmap()
+                            val composeBitmap = image.toComposeImageBitmap()
 
                             cameraFrameBitmap = composeBitmap
                         }
-
-                        poolIndex = (poolIndex + 1) % poolSize
                     } catch (_: org.bytedeco.javacv.FrameGrabber.Exception) {
                         continue
                     }
