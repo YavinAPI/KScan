@@ -63,6 +63,7 @@ class BarcodeFormatMapperTest {
         assertEquals(BarcodeFormat.TYPE_UNKNOWN, ZxingBarcodeFormat.MAXICODE.toKScanFormat())
     }
 
+    @Test
     fun `GIVEN list with unsupported formats WHEN toZxingFormat THEN filters them out`() {
         val input = listOf(BarcodeFormat.FORMAT_QR_CODE, BarcodeFormat.TYPE_UNKNOWN)
         val mapped = input.mapNotNull { it.toZxingFormat() }
