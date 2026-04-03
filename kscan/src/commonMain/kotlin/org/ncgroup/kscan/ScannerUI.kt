@@ -35,17 +35,19 @@ fun ScannerUI(
         modifier = Modifier.fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        ScannerHeader(
-            onCancel = onCancel,
-            showTorch = options.showTorch,
-            torchEnabled = torchEnabled,
-            onTorchEnabled = onTorchEnabled,
-            title = options.headerTitle,
-            containerColor = colors.headerContainerColor,
-            navigationIconColor = colors.headerNavigationIconColor,
-            titleColor = colors.headerTitleColor,
-            actionIconColor = colors.headerActionIconColor,
-        )
+        if (options.showHeader) {
+            ScannerHeader(
+                onCancel = onCancel,
+                showTorch = options.showTorch,
+                torchEnabled = torchEnabled,
+                onTorchEnabled = onTorchEnabled,
+                title = options.headerTitle,
+                containerColor = colors.headerContainerColor,
+                navigationIconColor = colors.headerNavigationIconColor,
+                titleColor = colors.headerTitleColor,
+                actionIconColor = colors.headerActionIconColor,
+            )
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 

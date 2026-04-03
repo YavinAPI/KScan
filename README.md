@@ -14,7 +14,7 @@ A Compose Multiplatform barcode scanning library for Android, iOS and Desktop.
 Add the dependency to your `commonMain` source set:
 
 ```kotlin
-implementation("io.github.ismai117:KScan:$version")
+implementation("com.github.YavinAPI:KScan:$version")
 ```
 
 ## Platform Setup
