@@ -1,7 +1,7 @@
 # KScan
 
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![Latest release](https://img.shields.io/github/v/release/ismai117/KScan?color=brightgreen&label=latest%20release)](https://github.com/ismai117/KScan/releases/latest)
+[![Latest release](https://img.shields.io/github/v/release/YavinAPI/KScan?color=brightgreen&label=latest%20release)](https://github.com/YavinAPI/KScan/releases/latest)
 
 A Compose Multiplatform barcode scanning library for Android, iOS and Desktop.
 

@@ -45,13 +45,12 @@ kotlin {
 mavenPublishing {
     publishToMavenCentral()
     signAllPublications()
-    coordinates("io.github.ismai117", "KScan", "0.7.1")
 
     pom {
         name.set(project.name)
         description.set("Compose Multiplatform Barcode Scanning Library")
         inceptionYear.set("2024")
-        url.set("https://github.com/ismai117/KScan/")
+        url.set("https://github.com/YavinAPI/KScan/")
         licenses {
             license {
                 name.set("The Apache License, Version 2.0")
@@ -59,17 +58,11 @@ mavenPublishing {
                 distribution.set("http://www.apache.org/licenses/LICENSE-2.0.txt")
             }
         }
-        developers {
-            developer {
-                id.set("ismai117")
-                name.set("ismai117")
-                url.set("https://github.com/ismai117/")
-            }
-        }
+
         scm {
-            url.set("https://github.com/ismai117/KScan/")
-            connection.set("scm:git:git://github.com/ismai117/KScan.git")
-            developerConnection.set("scm:git:ssh://git@github.com/ismai117/KScan.git")
+            url.set("https://github.com/YavinAPI/KScan/")
+            connection.set("scm:git:git://github.com/YavinAPI/KScan.git")
+            developerConnection.set("scm:git:ssh://git@github.com/YavinAPI/KScan.git")
         }
     }
 }
